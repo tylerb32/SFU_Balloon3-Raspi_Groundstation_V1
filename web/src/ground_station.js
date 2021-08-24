@@ -5,7 +5,7 @@ const DATA_UPDATE_INTERVAL = 5 * 1000; // Update data every 5 seconds
 const CHECKSUM_SEP_CHAR = '~';
 const PACKET_DELIM_CHAR = ',';
 const NO_FIX_CHAR = '!';
-const PACKET_ERROR = { INVALID_CHECKSUM: 1, INVALID_CHARACTERS: 2, INVALID_FORMAT: 3 };
+const PACKET_ERROR = { INVALID_CHECKSUM: 1, INVALID_CHARACTERS: 2, INVALID_FORMAT: 3, NO_FIX: 4 };
 
 let dataPointer = 0; // Stores current line in data file
 
@@ -85,7 +85,9 @@ function parseData(packet) {
     // Log/Error packet
     if (data.length == 1) {
         if (data[0] == NO_FIX_CHAR) {
-
+            return PACKET_ERROR.NO_FIX;
+        } else {
+            return PACKET_ERROR.INVALID_FORMAT;
         }
     // Data packet
     } else if (data.length == 4) {
@@ -129,6 +131,9 @@ function updateData() {
 
                     } else if (packet == PACKET_ERROR.INVALID_FORMAT) {
                         console.warn("Invalid format received.");
+
+                    } else if (packet == PACKET_ERROR.NO_FIX) {
+                        console.error("No GPS fix.");
 
                     } else {
                         createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received");
