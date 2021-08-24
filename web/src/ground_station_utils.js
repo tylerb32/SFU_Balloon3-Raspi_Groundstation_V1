@@ -47,3 +47,7 @@ export function getUserLocation() {
         return null;
     }
 }
+
+export function addToLog() {
+    document.getElementById("")
+}
