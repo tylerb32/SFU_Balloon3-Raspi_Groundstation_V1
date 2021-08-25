@@ -5,7 +5,6 @@ const DATA_UPDATE_INTERVAL = 5 * 1000; // Update data every 5 seconds
 const CHECKSUM_SEP_CHAR = '~';
 const PACKET_DELIM_CHAR = ',';
 const NO_FIX_CHAR = '!';
-const PROJECTED_FLIGHT_FILE_PATH = '/data/flight_path.csv';
 const MIN_PLOT_DISTANCE = 0; // The minimum distance in meters required between points for them to be plotted - 0 => plot all points
 
 let dataPointer = 0; // Stores current line in data file
@@ -14,19 +13,13 @@ let totalPacketCounter = 0;
 let goodPacketCounter = 0;
 
 // Leaflet Map Creation
-let map = L.map('map').setView([51.483667, -113.142667], 14); // Launch Site
-L.tileLayer('/tiles_ab/{z}/{x}/{y}.png', {
+let map = L.map('map').setView([49.182279, -122.775576], 14);
+L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=MkQIEDVq5v8Isbccqcci', {
     // Setup map attributes
-    minZoom: 9,
-    maxZoom: 15,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 // Add map scale
 L.control.scale().addTo(map);
-
-// // Add launch site marker
-let launchSiteMarker = L.marker([51.486, -113.142], {icon: utils.ICON_HOUSE}).addTo(map);
-launchSiteMarker.bindPopup("<b>Launch Site</b>").openPopup();
 
 // Create a marker containing location data and google maps directions link. Adds marker to map and returns the marker object
 function createLocMarker(location, altitude, time, title, icon) {
@@ -123,48 +116,6 @@ function parseData(packet) {
         return utils.PACKET_TYPE.INVALID_FORMAT;
     }
 }
-
-function plotProjectedPath() {
-    // Request the file from the server
-    fetch(PROJECTED_FLIGHT_FILE_PATH)
-        .then(response => response.text())
-        .then(data => {
-            let path = [];
-            let allData = data.split('\n');
-            for (let i = 0; i < allData.length; i+=5) {
-                let line = allData[i].split(',');
-                // Parse Time
-                let unixTime = parseInt(line[0]);
-                let date = new Date(unixTime * 1000);
-                let hours = date.getHours();
-                let minutes = '0' + date.getMinutes();
-                let seconds = '0' + date.getSeconds();
-                let time = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
-                //Parse latitude, longitude, and altitude
-                let latitude = parseFloat(line[1]);
-                let longitude = parseFloat(line[2]);
-                let altitude = parseFloat(line[3]);
-                path.push({
-                    latitude: latitude,
-                    longitude: longitude,
-                    altitude: altitude,
-                    time: time
-                });
-            }
-            for (let i = 0; i < path.length; i++) {
-                createLocMarker([path[i].latitude, path[i].longitude], path[i].altitude, path[i].time, "Predicted " + i, utils.ICON_CIRCLE_BLACK);
-            }
-            for (let i = 1; i < path.length; i++) {
-                let point1 = [path[i-1].latitude, path[i-1].longitude];
-                let point2 = [path[i].latitude, path[i].longitude];
-                L.polyline([point1, point2], {
-                    color: 'black',
-                    smoothFactor: 2.0
-                }).addTo(map);
-            }
-        });
-}
-plotProjectedPath();
 
 // Update the data displayed on the map
 async function updateData() {
