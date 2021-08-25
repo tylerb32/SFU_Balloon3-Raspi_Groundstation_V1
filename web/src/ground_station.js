@@ -5,10 +5,12 @@ const DATA_UPDATE_INTERVAL = 5 * 1000; // Update data every 5 seconds
 const CHECKSUM_SEP_CHAR = '~';
 const PACKET_DELIM_CHAR = ',';
 const NO_FIX_CHAR = '!';
-const MIN_PLOT_DISTANCE = 0; // The minimum distance in meters required between points for them to be plotted - 0 => plot all points
+const MIN_PLOT_DISTANCE = 3; // The minimum distance in meters required between points for them to be plotted - 0 => plot all points
+const MIN_PATH_DISTANCE = 5;
 
 let dataPointer = 0; // Stores current line in data file
 let prevLoc = null; // Stores the last plotted marker as {latitude, longitude, altitude, time}
+let prevPathLoc = null;
 let totalPacketCounter = 0;
 let goodPacketCounter = 0;
 
@@ -39,6 +41,15 @@ function createLocMarker(location, altitude, time, title, icon) {
                      + "Altitude: " + altitude + "m" + "<br><b>"
                      + mapsLink + "</b></p>");
     return marker;
+}
+
+function plotPath(coordsInit, coordsFin, colour, smoothing) {
+    if (coordsInit != coordsFin) {
+        L.polyline([coordsInit, coordsFin], {
+            color: colour,
+            smoothFactor: smoothing
+        }).addTo(map);
+    }
 }
 
 // Accept an array [lat,long]
@@ -148,7 +159,7 @@ async function updateData() {
 
             } else {
                 goodPacketCounter++;
-                if (prevLoc == null || MIN_PLOT_DISTANCE <= 0) {
+                if (prevLoc == null) {
                     prevLoc = packet;
                     createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received #" + goodPacketCounter + "/" + totalPacketCounter, utils.ICON_LOC_BLUE);
 
@@ -161,7 +172,14 @@ async function updateData() {
                         icon = utils.ICON_LOC_RED;
                     }
                     prevLoc = packet;
-                    createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received #" + goodPacketCounter + "/" + totalPackteCounter, icon);
+                    createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received #" + goodPacketCounter + "/" + totalPacketCounter, icon);
+                }
+                if (prevPathLoc == null) {
+                    prevPathLoc = packet;
+
+                } else if (utils.getDistanceBetweenCoords([prevPathLoc.latitude, prevPathLoc.longitude], [packet.latitude, packet.longitude]) >= MIN_PATH_DISTANCE) {
+                    plotPath([prevPathLoc.latitude, prevPathLoc.longitude], [packet.latitude, packet.longitude], 'blue', 1.5);
+                    prevPathLoc = packet;
                 }
                 
                 console.log("Received: [" + packet.latitude + ", " + packet.longitude + "], " + packet.altitude + "m, @ " + packet.time);
