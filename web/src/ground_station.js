@@ -228,15 +228,15 @@ async function updateData() {
                         icon = utils.ICON_LOC_RED;
                     }
                     prevLoc = packet;
-                    createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received #" + goodPacketCounter + "/" + totalPackteCounter, icon);
+                    createLocMarker([packet.latitude, packet.longitude], packet.altitude, packet.time, "Received #" + goodPacketCounter + "/" + totalPacketCounter, icon);
                 }
 
                 // Determine if a path should connect this point to the last stored path point given min and max path distance constants
                 if (prevPathLoc == null) {
                     prevPathLoc = prevLoc;
             
-                } else if (utils.getDistanceBetweenCoords([prevLoc.latitude, prevLoc.longitude], [packet.latitude, packet.longitude]) >= MIN_PATH_DISTANCE 
-                        && utils.getDistanceBetweenCoords([prevLoc.latitude, prevLoc.longitude], [packet.latitude, packet.longitude]) < MAX_PATH_DISTANCE) {
+                } else if (utils.getDistanceBetweenCoords([prevPathLoc.latitude, prevPathLoc.longitude], [packet.latitude, packet.longitude]) >= MIN_PATH_DISTANCE 
+                        && utils.getDistanceBetweenCoords([prevPathLoc.latitude, prevPathLoc.longitude], [packet.latitude, packet.longitude]) < MAX_PATH_DISTANCE) {
                     plotPath([prevPathLoc.latitude, prevPathLoc.longitude], [packet.latitude, packet.longitude], 'blue', 1.5);
                 }
                 
