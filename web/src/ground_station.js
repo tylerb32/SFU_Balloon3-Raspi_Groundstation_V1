@@ -5,7 +5,6 @@ const DATA_UPDATE_INTERVAL = 5 * 1000; // Update data every 5 seconds
 const CHECKSUM_SEP_CHAR = '~';
 const PACKET_DELIM_CHAR = ',';
 const NO_FIX_CHAR = '!';
-const PROJECTED_FLIGHT_FILE_PATH = '/data/flight_path.csv';
 const MIN_PLOT_DISTANCE = 5; // The minimum distance in meters required between points for them to be plotted - 0 => plot all points
 const MAX_PLOT_DISTANCE = 500 * 1000;
 const MIN_PATH_DISTANCE = 20; // The minimum distance in meters required between points for a line to connect them - 0 => connect all points
@@ -19,19 +18,13 @@ let goodPacketCounter = 0;
 let userMarker = null;
 
 // Leaflet Map Creation
-let map = L.map('map').setView([51.483667, -113.142667], 14); // Launch Site
-L.tileLayer('/tiles_ab/{z}/{x}/{y}.png', {
+let map = L.map('map').setView([49.182279, -122.775576], 14);
+L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=MkQIEDVq5v8Isbccqcci', {
     // Setup map attributes
-    minZoom: 9,
-    maxZoom: 15,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 // Add map scale
 L.control.scale().addTo(map);
-
-// // Add launch site marker
-let launchSiteMarker = L.marker([51.486, -113.142], {icon: utils.ICON_HOUSE}).addTo(map);
-launchSiteMarker.bindPopup("<b>Launch Site</b>").openPopup();
 
 // Create a marker containing location data and google maps directions link. Adds marker to map and returns the marker object
 function createLocMarker(location, altitude, time, title, icon) {
@@ -79,25 +72,34 @@ function toDecimalDegrees(position) {
 }
 
 // Attempts to get user location
-function getUserLocation() {
-    let retVal = null;
-    function success(position) {
-        retVal = { latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                altitude: position.coords.altitude };
-    }
+function updateUserLocation() {
 
     function error() {
-        retVal = null;
+        console.log("Error getting coordinates!");
+    }
+
+    function success(position) {
+        let prevLoc = null;
+        let newLoc = [position.coords.latitude, position.coords.longitude];
+        if (userMarker != null) {
+            prevLoc = [userMarker.getLatLng().lat, userMarker.getLatLng().lng];
+            if (newLoc != prevLoc) {
+                userMarker.remove();
+                userMarker = null;
+            }
+        }
+        
+        if (newLoc != prevLoc) {
+            userMarker = createLocMarker(newLoc, position.coords.altitude, "?", "User Location", utils.ICON_HOUSE);
+        }
     }
 
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(success, error);
+        navigator.geolocation.getCurrentPosition(success, error, utils.geoOptions);
 
     } else {
-        return retVal = null;
+        console.log("Geolocation not available!");
     }
-    return retVal;
 }
 
 // Parses a packet and returns a dictionary defining the parsed values
@@ -171,58 +173,10 @@ function plotPath(coordsInit, coordsFin, colour, smoothing) {
     }
 }
 
-// Parses a csv file genreated by HAB Predicter defined by a constant and plots the path described by it
-function plotProjectedPath() {
-    // Request the file from the server
-    fetch(PROJECTED_FLIGHT_FILE_PATH)
-        .then(response => response.text())
-        .then(data => {
-            let path = [];
-            let allData = data.split('\n');
-            for (let i = 0; i < allData.length; i+=5) {
-                let line = allData[i].split(',');
-                // Parse Time
-                let unixTime = parseInt(line[0]);
-                let date = new Date(unixTime * 1000);
-                let hours = date.getHours();
-                let minutes = '0' + date.getMinutes();
-                let seconds = '0' + date.getSeconds();
-                let time = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
-                //Parse latitude, longitude, and altitude
-                let latitude = parseFloat(line[1]);
-                let longitude = parseFloat(line[2]);
-                let altitude = parseFloat(line[3]);
-                path.push({
-                    latitude: latitude,
-                    longitude: longitude,
-                    altitude: altitude,
-                    time: time
-                });
-            }
-            // Plot markers and path
-            for (let i = 0; i < path.length; i++) {
-                createLocMarker([path[i].latitude, path[i].longitude], path[i].altitude, path[i].time, "Predicted " + i, utils.ICON_CIRCLE_BLACK);
-            }
-            for (let i = 1; i < path.length; i++) {
-                let point1 = [path[i-1].latitude, path[i-1].longitude];
-                let point2 = [path[i].latitude, path[i].longitude];
-                plotPath(point1, point2, 'black', 2.0);
-            }
-        });
-}
-plotProjectedPath();
-
 // Updates the data displayed on the map
 // Called by setInterval on a defined interval
 async function updateData() {
-    let userLoc = getUserLocation();
-    if (userLoc != null) {
-        if (userMarker != null) {
-            userMarker.remove();
-            userMarker = null;
-        }
-        userMarker = createLocMarker([userLoc.latitude, userLoc.longitude], userLoc.altitude, "?", "User Location", utils.ICON_HOUSE);
-    }
+    updateUserLocation();
 
     // Request the data from the server
     let response = await fetch('/data/data.txt');
@@ -239,7 +193,7 @@ async function updateData() {
             if (packet == utils.PACKET_TYPE.INVALID_CHARACTERS) {
                 console.warn("Invalid character received.");
                 utils.logData("Invalid character received.", utils.PACKET_TYPE.INVALID_CHARACTERS);
-                
+
             // Catches any corrupt packets which failed the checksum test
             } else if (packet == utils.PACKET_TYPE.INVALID_CHECKSUM) {
                 console.warn("Invalid checksum received.");

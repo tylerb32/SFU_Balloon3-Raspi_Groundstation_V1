@@ -35,6 +35,10 @@ export const ICON_LOC_BLUE = L.icon({
     popupAnchor: [0, -36]
 });
 
+export const geoOptions = {
+    enableHighAccuracy: true
+};
+
 // Approximates the distance between 2 coordinates
 // Takes 2 coordinates in the following format [lat1, lon1], [lat2, lon2]
 export function getDistanceBetweenCoords(coord1, coord2) {
