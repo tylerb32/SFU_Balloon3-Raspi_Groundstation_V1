@@ -1,3 +1,4 @@
+// Defining constants
 export const PACKET_TYPE = { GOOD: 0, INVALID_CHECKSUM: 1, INVALID_CHARACTERS: 2, INVALID_FORMAT: 3, NO_FIX: 4 };
 
 export const ICON_CIRCLE_BLACK = L.icon({
@@ -54,6 +55,10 @@ export function getDistanceBetweenCoords(coord1, coord2) {
     return 2 * radius * Math.asin(sqrtTerm);
 }
 
+// Writes data to the sidebar log
+// Inputs:
+// data: A string message to be logged
+// type: A PACKET_TYPE which describes the message type
 export function logData(data, type) {
     let log = document.getElementById('log_list');
     let node = document.createElement('li');
